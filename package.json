@@ -1,0 +1,25 @@
+{
+  "name": "http-log",
+  "version": "1.0.0",
+  "description": "HTTP log monitor (Datadog interview project)",
+  "main": "index.js",
+  "scripts": {
+    "start": "node build/index.js",
+    "start:build": "npm run build && npm run start",
+    "build": "tsc",
+    "test": "jest"
+  },
+  "author": "Angel Campbell",
+  "license": "ISC",
+  "devDependencies": {
+    "@babel/core": "^7.11.6",
+    "@babel/preset-env": "^7.11.5",
+    "@babel/preset-typescript": "^7.10.4",
+    "@types/jest": "^26.0.14",
+    "@types/node": "^14.11.2",
+    "babel-jest": "^26.3.0",
+    "jest": "^26.4.2",
+    "ts-jest": "^26.4.0",
+    "typescript": "^4.0.3"
+  }
+}
