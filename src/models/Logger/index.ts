@@ -54,8 +54,8 @@ export class Logger {
     Bytes received: ${report.totalBytes}\n
     Client errors: ${report.clientErrors}\n
     Server errors: ${report.serverErrors}\n
-    Excessive Requestors: \n${excessiveRequestors}\n
-    Request Frequency: ${freq}/s\n
+    Excessive Requestors: \n${excessiveRequestors}${report.excessiveIPs.length > 0 && '\n'}
+    Request Frequency: ${freq} req/s\n
     Popular sections: ${report.maxSecHits} requests to ${report.maxSections.join(', ')}
     `;
   };

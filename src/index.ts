@@ -12,7 +12,7 @@ const main = async () => {
   const logger = new Logger();
   for (let logLine of logLines) {
     logger.ingestLogLine(logLine);
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 1000));
   }
 };
 

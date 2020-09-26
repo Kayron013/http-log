@@ -36,8 +36,18 @@ test('should ', () => {
 "10.0.0.2","-","apache",1549573873,"GET /api/user HTTP/1.0",200,1307
   `;
 
-  console.log = jest.fn();
+  const log = (console.log = jest.fn());
+
   sampleLogs.split('\n').forEach(line => {
     logger.ingestLogLine(line);
   });
+
+  expect(log.mock.calls[0][0]).toBe(`10-sec Report:\n
+    Bytes received: 36847\n
+    Client errors: 2\n
+    Server errors: 3\n
+    Excessive Requestors: \n
+    Request Frequency: 3 req/s\n
+    Popular sections: 21 requests to /api
+    `);
 });
