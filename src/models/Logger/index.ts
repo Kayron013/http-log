@@ -1,5 +1,6 @@
-import { Bucket, BucketReport } from 'models/Bucket';
-import { parseLog } from 'utils/parse-log';
+import { parseLog } from '../../utils/parse-log';
+import { Bucket, BucketReport } from '../Bucket';
+import moment from 'moment';
 
 export class Logger {
   /** Amount of logs per second, at/above which, is considered excessive */
@@ -11,18 +12,25 @@ export class Logger {
   /** Amount of buckets stored at a time */
   private static readonly BUCKETS_LEN = Logger.LOG_CACHE_LENGTH / Logger.BUCKET_RANGE;
 
+  /** Returns bucket start time for a date */
+  static getStartTime = (ts: number) => {
+    // round up to a multiple of the bucket range
+    return Math.ceil(ts / Logger.BUCKET_RANGE) * Logger.BUCKET_RANGE;
+  };
+
   private totalHits = 0;
   private startTime = 0;
   private isInHighTraffic = false;
+  private lastBucketIndex = 0;
   private buckets: Bucket[] = new Array(Logger.BUCKETS_LEN).fill(null).map(() => new Bucket());
 
   private bucketIndexFromDate = (ts: number) => {
-    const bucketTime = Bucket.getStartTime(ts);
+    const bucketTime = Logger.getStartTime(ts);
     return (bucketTime - this.startTime) / Logger.BUCKET_RANGE;
   };
 
   //** Adjust window of logs to accomodate new time range */
-  private moveLogWindow = (bucketTime: number) => {
+  private shiftLogWindow = (bucketTime: number) => {
     const moveAmount = this.bucketIndexFromDate(bucketTime) - Logger.BUCKETS_LEN + 1;
 
     // if entire window would be shifted out, just replace with a new set,...
@@ -34,7 +42,7 @@ export class Logger {
     else {
       for (let i = 0; i < Logger.BUCKETS_LEN; i++) {
         if (i + moveAmount < Logger.BUCKETS_LEN) {
-          // Remove stats from removed buckets
+          // remove stats from removed buckets
           this.totalHits -= this.buckets[i].length;
           this.buckets[i] = this.buckets[i + moveAmount];
         } else {
@@ -43,34 +51,42 @@ export class Logger {
       }
 
       this.startTime += moveAmount * Logger.BUCKET_RANGE;
+      this.lastBucketIndex = this.bucketIndexFromDate(bucketTime);
     }
   };
 
   private formatBucketReport = (report: BucketReport) => {
     const freq = report.logCount / Logger.BUCKET_RANGE;
-    const excessiveRequestors = report.excessiveIPs.map(({ ip, hits }) => `\tip: ${ip}\thits: ${hits}`).join('\n');
+    const excessiveRequestors = report.excessiveIPs.map(({ ip, hits }) => `\tip: ${ip}\trequests: ${hits}`).join('\n');
 
-    return `${Logger.BUCKET_RANGE}-sec Report:\n
+    return `\n
+    ${Logger.BUCKET_RANGE}-sec Report:\n
     Bytes received: ${report.totalBytes}\n
     Client errors: ${report.clientErrors}\n
     Server errors: ${report.serverErrors}\n
-    Excessive Requestors: \n${excessiveRequestors}${report.excessiveIPs.length > 0 && '\n'}
+    Excessive Requestors: \n${excessiveRequestors}${report.excessiveIPs.length > 0 ? '\n' : ''}
     Request Frequency: ${freq} req/s\n
     Popular sections: ${report.maxSecHits} requests to ${report.maxSections.join(', ')}
-    `;
+    \n`;
   };
 
   private printReport = () => {
-    const bucket = this.buckets[Logger.BUCKETS_LEN - 1];
+    const bucket = this.buckets[this.lastBucketIndex];
     const report = bucket.getReport();
-    console.log(this.formatBucketReport(report));
+    console.info(this.formatBucketReport(report));
+  };
+
+  private formatDate = (ts: number) => {
+    return moment(ts * 1000).format('mm/DD/YY hh:mm:ss a');
   };
 
   ingestLogLine = (logStr: string) => {
+    let reportPrinted = false;
+
     const log = parseLog(logStr);
 
     if (this.startTime === 0) {
-      this.startTime = Bucket.getStartTime(log.date);
+      this.startTime = Logger.getStartTime(log.date);
     }
 
     let bucketIndex = this.bucketIndexFromDate(log.date);
@@ -82,11 +98,14 @@ export class Logger {
 
     // new log is outside of current x-sec window
     if (bucketIndex >= Logger.BUCKETS_LEN) {
-      // print a report of the last bucket whenever we move to a new bucket
+      // print a report of the last bucket before shifting window
       this.printReport();
-      const bucketTime = Bucket.getStartTime(log.date);
-      this.moveLogWindow(bucketTime);
+      const bucketTime = Logger.getStartTime(log.date);
+      this.shiftLogWindow(bucketTime);
       bucketIndex = this.bucketIndexFromDate(bucketTime);
+    } else if (bucketIndex > this.lastBucketIndex) {
+      this.printReport();
+      this.lastBucketIndex = bucketIndex;
     }
 
     const bucket = this.buckets[bucketIndex];
@@ -98,11 +117,11 @@ export class Logger {
     const isHighTraffic = traffic >= Logger.LOGS_PER_SEC_THRESHOLD;
 
     if (isHighTraffic && !this.isInHighTraffic) {
-      const date = new Date(log.date * 1000).toDateString();
-      console.log(`High traffic generated an alert - hits = ${this.totalHits}, triggered at ${date}`);
+      const date = this.formatDate(log.date);
+      console.info(`\nHigh traffic generated an alert - hits = ${this.totalHits}, triggered at ${date}\n`);
     } else if (!isHighTraffic && this.isInHighTraffic) {
-      const date = new Date(log.date * 1000).toDateString();
-      console.log(`Traffic volume has subsided, recovered at ${date}`);
+      const date = this.formatDate(log.date);
+      console.info(`\nTraffic volume has subsided, recovered at ${date}\n`);
     }
 
     this.isInHighTraffic = isHighTraffic;

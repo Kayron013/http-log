@@ -1,6 +1,6 @@
 import { Bucket } from '.';
 
-test('bucket collects logs and returns report', () => {
+test('bucket collects logs and returns report of aggregations', () => {
   const bucket = new Bucket();
 
   for (let i = 0; i < 20; i++) {

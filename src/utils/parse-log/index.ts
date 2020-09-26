@@ -1,6 +1,5 @@
 export const parseLog = (logStr: string) => {
   const parts = logStr.split(',');
-
   return {
     ip: JSON.parse(parts[0]),
     rfc931: JSON.parse(parts[1]),

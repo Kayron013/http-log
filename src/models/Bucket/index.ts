@@ -1,4 +1,4 @@
-import { Log } from 'utils/parse-log';
+import { Log } from '../../utils/parse-log';
 
 /** A collection of logs */
 export class Bucket {
@@ -18,14 +18,6 @@ export class Bucket {
   get length() {
     return this.logs.length;
   }
-
-  /**
-   * Returns bucket start time for a date
-   * @param ts a timestamp
-   */
-  static getStartTime = (ts: number) => {
-    return Math.round(ts / 10) * 10;
-  };
 
   private isClientError = (status: number) => {
     return String(status)[0] === '4';
@@ -55,7 +47,7 @@ export class Bucket {
     const secHits = ++this.sectionHits[section];
     const ipHits = ++this.ipHits[log.ip];
 
-    // Keeping track of sections with the most hits;
+    // keeping track of sections with the most hits;
     // only ones tied for 1st
     if (this.maxSections.size == 0 || secHits > this.maxSecHits) {
       this.maxSections = new Set([section]);
@@ -64,7 +56,7 @@ export class Bucket {
       this.maxSections.add(section);
     }
 
-    // Keeping track of IPs making excessive requests;
+    // keeping track of IPs making excessive requests;
     if (ipHits >= Bucket.EXCESSIVE_REQ_THRESHOLD) {
       this.excessiveIPs.add(log.ip);
     }
