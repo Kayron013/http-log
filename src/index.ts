@@ -1,3 +1,6 @@
+// Lets node reference lines in .ts files
+require('source-map-support').install();
+
 import fs from 'fs';
 import path from 'path';
 import { Logger } from './models/Logger';
